@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014 The Kubernetes Authors.
 #
@@ -18,6 +18,9 @@
 set -o errexit
 set -o nounset
 set -o pipefail
+
+# Unset CDPATH, having it set messes up with script import paths
+unset CDPATH
 
 USER_ID=$(id -u)
 GROUP_ID=$(id -g)

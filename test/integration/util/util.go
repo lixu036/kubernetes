@@ -58,7 +58,7 @@ func StartApiserver() (string, ShutdownFunc) {
 // StartScheduler configures and starts a scheduler given a handle to the clientSet interface
 // and event broadcaster. It returns a handle to the configurator for the running scheduler
 // and the shutdown function to stop it.
-func StartScheduler(clientSet clientset.Interface, enableEquivalenceCache bool) (scheduler.Configurator, ShutdownFunc) {
+func StartScheduler(clientSet clientset.Interface) (scheduler.Configurator, ShutdownFunc) {
 	informerFactory := informers.NewSharedInformerFactory(clientSet, 0)
 
 	evtBroadcaster := record.NewBroadcaster()
@@ -105,12 +105,13 @@ func createSchedulerConfigurator(
 		informerFactory.Core().V1().PersistentVolumes(),
 		informerFactory.Core().V1().PersistentVolumeClaims(),
 		informerFactory.Core().V1().ReplicationControllers(),
-		informerFactory.Extensions().V1beta1().ReplicaSets(),
-		informerFactory.Apps().V1beta1().StatefulSets(),
+		informerFactory.Apps().V1().ReplicaSets(),
+		informerFactory.Apps().V1().StatefulSets(),
 		informerFactory.Core().V1().Services(),
 		informerFactory.Policy().V1beta1().PodDisruptionBudgets(),
 		informerFactory.Storage().V1().StorageClasses(),
 		v1.DefaultHardPodAffinitySymmetricWeight,
 		utilfeature.DefaultFeatureGate.Enabled(features.EnableEquivalenceClassCache),
+		false,
 	)
 }

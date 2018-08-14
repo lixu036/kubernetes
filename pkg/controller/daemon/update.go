@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	intstrutil "k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/json"
-	"k8s.io/apimachinery/pkg/util/rand"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/daemon/util"
@@ -316,8 +315,8 @@ func (dsc *DaemonSetsController) snapshot(ds *apps.DaemonSet, revision int64) (*
 	if err != nil {
 		return nil, err
 	}
-	hash := fmt.Sprint(controller.ComputeHash(&ds.Spec.Template, ds.Status.CollisionCount))
-	name := ds.Name + "-" + rand.SafeEncodeString(hash)
+	hash := controller.ComputeHash(&ds.Spec.Template, ds.Status.CollisionCount)
+	name := ds.Name + "-" + hash
 	history := &apps.ControllerRevision{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
@@ -331,16 +330,16 @@ func (dsc *DaemonSetsController) snapshot(ds *apps.DaemonSet, revision int64) (*
 	}
 
 	history, err = dsc.kubeClient.AppsV1().ControllerRevisions(ds.Namespace).Create(history)
-	if errors.IsAlreadyExists(err) {
+	if outerErr := err; errors.IsAlreadyExists(outerErr) {
 		// TODO: Is it okay to get from historyLister?
 		existedHistory, getErr := dsc.kubeClient.AppsV1().ControllerRevisions(ds.Namespace).Get(name, metav1.GetOptions{})
 		if getErr != nil {
 			return nil, getErr
 		}
 		// Check if we already created it
-		done, err := Match(ds, existedHistory)
-		if err != nil {
-			return nil, err
+		done, matchErr := Match(ds, existedHistory)
+		if matchErr != nil {
+			return nil, matchErr
 		}
 		if done {
 			return existedHistory, nil
@@ -361,7 +360,7 @@ func (dsc *DaemonSetsController) snapshot(ds *apps.DaemonSet, revision int64) (*
 			return nil, updateErr
 		}
 		glog.V(2).Infof("Found a hash collision for DaemonSet %q - bumping collisionCount to %d to resolve it", ds.Name, *currDS.Status.CollisionCount)
-		return nil, err
+		return nil, outerErr
 	}
 	return history, err
 }
